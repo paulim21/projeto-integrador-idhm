@@ -3,6 +3,10 @@
 Tempo-alvo: **6 a 8 minutos**. A regra é não ler a tela: cada bloco abaixo é uma ideia
 dita em voz alta, com o número que a sustenta já conferido na base.
 
+> **Se o tempo apertar**, corte nesta ordem: o bloco 7 (gasto público), depois o 6
+> (série 2012–2024), depois metade do bloco 5 (municípios, mantendo só a frase da
+> amplitude). Os blocos 1 a 4 e 8 a 10 são o núcleo cobrado pela rubrica.
+
 > Todos os valores deste roteiro saem da base tratada do painel (Atlas Brasil / Censos de
 > 1991, 2000 e 2010). Se alterar os filtros durante a apresentação, os números mudam — e é
 > esse o ponto do dashboard.
@@ -110,7 +114,51 @@ Troque o indicador em foco para **IDHM Renda**:
 
 ---
 
-## 5. A desigualdade está caindo (45 s)
+## 5. Dentro dos estados: o recorte municipal (1 min 30 s)
+
+Aba **Municípios**.
+
+> "Até aqui falamos de 27 médias estaduais. Mas a média de um estado esconde o estado.
+> Agora são **5.565 municípios**."
+
+| Medida — IDHM municipal, 2010 | Valor |
+|---|---|
+| Média | 0,659 |
+| Mediana | 0,665 |
+| Q1 – Q3 | 0,599 – 0,718 |
+| IQR | 0,119 |
+| Desvio padrão | 0,072 |
+| Amplitude | **0,444** (Melgaço/PA 0,418 ate São Caetano do Sul/SP 0,862) |
+
+A frase que ancora o bloco inteiro:
+
+> "A amplitude entre os 27 estados é 0,193. A amplitude **dentro do Pará**, sozinho, é
+> **0,328** — de Melgaço, 0,418, a Belém, 0,746. **A desigualdade dentro de cada um dos
+> cinco estados que atendemos é maior que a desigualdade entre todos os estados do
+> Brasil.** Isso muda o desenho da política pública: não adianta transferir dinheiro para
+> a média de um estado."
+
+Mostre a tabela de dispersão por UF, ordenada por IQR:
+
+> "O IQR municipal mede o quanto um estado é desigual por dentro. O **Acre** lidera, com
+> 0,078, seguido de **Minas Gerais**, com 0,069. No outro extremo, o **Ceará** tem IQR de
+> 0,033 — é o mais homogêneo entre os seus municípios. Atenção à leitura: homogêneo não
+> quer dizer bom. O Ceará é parelho em um patamar baixo, com média municipal de 0,617."
+
+> "E daqui sai uma recomendação: **IQR alto pede política focalizada em territórios; IQR
+> baixo com média baixa pede política universal.** Dois estados com o mesmo IDHM podem
+> exigir desenhos opostos de intervenção."
+
+Outliers na escala municipal:
+
+> "Nos limites de Tukey municipais — de 0,420 a 0,896 — **um único município do país fica
+> fora: Melgaço, no Pará, com 0,418.** Um outlier em 5.565 casos. Reforça o que vimos no
+> nível estadual: a desigualdade brasileira é uma rampa contínua, não um punhado de
+> exceções."
+
+---
+
+## 6. A desigualdade está caindo (1 min)
 
 Aba **As três dimensões**, série histórica.
 
@@ -123,11 +171,56 @@ Aba **As três dimensões**, série histórica.
 > Minas Gerais subiu 53%. Há convergência — ela só é lenta demais para quem está na ponta
 > de baixo, e é por isso que o fundo existe."
 
+Role até o bloco da série de 2012 a 2024:
+
+> "A série dos Censos para em 2010. O PNUD, a Fundação João Pinheiro e o IBGE publicam
+> desde então uma série anual, o *Radar IDHM*, que vai até **2024** — e ela está aqui, em
+> bloco separado, porque **as duas séries não se somam**: a dos Censos vem do Censo
+> Demográfico, a anual vem da PNAD Contínua, com metodologia revisada. Juntar as duas no
+> mesmo gráfico criaria um degrau que não existe na realidade."
+
+> "O que essa série mostra: em 2024, **todas as 27 UFs estão nas faixas alto ou muito
+> alto** — nenhuma permanece onde estava em 2010. E ela registra a pandemia: **2021 é uma
+> queda visível em quase todo o país**, efeito sobre longevidade e renda. O Maranhão saiu
+> de 0,669 em 2012 para 0,745 em 2024, com recuo em 2021."
+
 ---
 
-## 6. O diagnóstico de cada gestor (1 min 30 s)
+## 7. Gasto público explica o IDHM? (1 min)
 
-Aba **Consultoria & Fundo**. Troque a persona no seletor.
+Aba **Estatística descritiva**, bloco "Quem gasta mais por habitante tem IDHM maior?".
+
+> "Essa é a pergunta que todo gestor faz. Para respondê-la foi preciso sair do IBGE: o
+> Atlas mede resultado social, não orçamento. Cruzamos o IDHM de 2024 com a **despesa
+> empenhada pelos governos estaduais no mesmo ano**, do Siconfi, do Tesouro Nacional."
+
+> "O resultado é contraintuitivo: a correlação de Pearson é **−0,035**. Praticamente nula.
+> O gasto por habitante explica **0,1%** da variação do IDHM entre os estados."
+
+> "E o gráfico mostra por quê. Quem mais gasta por habitante em investimento social é o
+> **Acre**, R$ 5.782, com IDHM de 0,754. Quem menos gasta é o **Rio de Janeiro**,
+> R$ 1.274, com IDHM de 0,819. Estados pequenos recebem transferências constitucionais
+> que, divididas por poucos habitantes, produzem gasto per capita alto. **É efeito de
+> escala populacional, não de eficiência.**"
+
+> "A conclusão honesta para o consórcio: **gastar mais por habitante, isoladamente, não
+> garante IDHM maior.** O que o fundo precisa definir não é só quanto, mas onde — e é
+> exatamente isso que o simulador faz. Vale o alerta: correlação não é causa. O IDHM
+> responde a décadas de política pública, não ao orçamento de um ano."
+
+---
+
+## 8. O diagnóstico de cada gestor (1 min 30 s)
+
+Comece pelo **radar**, na aba *As três dimensões*, com os cinco estados selecionados:
+
+> "Um olhar só no radar já entrega o diagnóstico. Os cinco triângulos têm o **mesmo
+> formato**: largos no vértice da Longevidade, achatados no da Educação. Nenhum dos cinco
+> estados tem um problema particular — todos têm **o mesmo problema**, e ele é educação.
+> A linha pontilhada é a média do país, e Minas Gerais é o único dos cinco que fica por
+> fora dela nos três vértices."
+
+Depois vá para a aba **Consultoria & Fundo** e troque a persona no seletor.
 
 | Gestor | UF | IDHM 2010 | Posição | Gargalo interno | Maior defasagem x país |
 |---|---|---|---|---|---|
@@ -157,7 +250,7 @@ Para Minas Gerais, inverta o tom:
 
 ---
 
-## 7. O fundo (1 min)
+## 9. O fundo (1 min)
 
 Mexa nos controles ao vivo.
 
@@ -185,12 +278,15 @@ Encerre com o teto:
 
 ---
 
-## 8. Fechamento (20 s)
+## 10. Fechamento (20 s)
 
-> "Resumo: o IDHM do Brasil é travado pela **educação**, a desigualdade entre estados **está
-> caindo mas devagar**, não há estado fora da curva — há uma **rampa contínua** — e o fundo
-> deve ser rateado pela **lacuna até a referência**, com a divisão interna seguindo a
-> dimensão em que cada estado mais perde para o país."
+> "Resumo: o IDHM do Brasil é travado pela **educação**; a desigualdade entre estados
+> **está caindo, mas devagar**; não há estado fora da curva — há uma **rampa contínua** —
+> e a maior desigualdade está **dentro** dos estados, não entre eles. Gasto por habitante,
+> sozinho, não explica o índice. Por isso o fundo deve ser rateado pela **lacuna até a
+> referência**, com a divisão interna seguindo a dimensão em que cada estado mais perde
+> para o país, e executado de forma **focalizada nos territórios** — não distribuído pela
+> média estadual."
 
 ---
 
@@ -215,6 +311,17 @@ contra 0,049).
 Porque o outlier encontrado — o DF na renda — é um valor verdadeiro. Excluir é legítimo
 quando o ponto é erro de medição; aqui ele é o fenômeno. O que fazemos é não usá-lo como
 meta de convergência para os demais.
+
+**"Por que a correlação com o gasto público deu quase zero? O gráfico não serve?"**
+Serve, e é justamente esse o achado. Um r de −0,035 responde "não" a uma hipótese que o
+gestor traz pronta, e a resposta vem com a explicação: o gasto per capita é inflado nos
+estados pequenos pelas transferências constitucionais. Um resultado nulo bem explicado
+vale mais que uma correlação forçada.
+
+**"Por que duas séries temporais separadas?"**
+Porque são metodologias diferentes. A série de 1991 a 2010 é censitária; a de 2012 a 2024
+é estimada pela PNAD Contínua. Colocá-las no mesmo eixo criaria entre 2010 e 2012 um
+degrau artificial, que seria lido como mudança real.
 
 **"Essa projeção de anos é uma previsão?"**
 Não. É extrapolação do ritmo de 1991 a 2010, útil para dimensionar a ordem de grandeza do

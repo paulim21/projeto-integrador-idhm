@@ -44,9 +44,13 @@ def pagina_sobre() -> None:
 
         1. Qual das três dimensões do IDHM puxa o índice para baixo em cada estado?
         2. Quanto o IDHM do estado subiria se só esse gargalo fosse corrigido?
-        3. A desigualdade entre as unidades da federação está aumentando ou diminuindo?
-        4. Existem estados tão distantes do conjunto que se caracterizam como outliers?
-        5. Como ratear um Fundo Regional de Redução de Desigualdades com critério auditável?
+        3. Qual a evolução do IDHM desde os anos 2000 até o dado mais recente?
+        4. Quais municípios têm os menores e os maiores índices, e qual é a dispersão
+           (IQR e desvio padrão) dentro de cada estado?
+        5. Existem estados ou municípios tão distantes do conjunto que se caracterizam
+           como outliers pela regra de 1,5 × IQR?
+        6. Existe correlação entre o IDHM e o investimento público por habitante?
+        7. Como ratear um Fundo Regional de Redução de Desigualdades com critério auditável?
 
         ### Como a seção entra no painel do grupo
 
@@ -64,20 +68,31 @@ def pagina_sobre() -> None:
 
         | Arquivo | Responsabilidade |
         |---|---|
-        | `src/dados_fonte.py` | base de referência do IDHM, metadados de UF e personas |
-        | `scripts/gerar_base_bruta.py` | grava o CSV bruto, com os problemas típicos de extração |
-        | `src/etl.py` | extração, limpeza, validação e enriquecimento (com log) |
+        | `src/dados_fonte.py` | base estadual de referência, metadados de UF e personas |
+        | `src/etl.py` | extração, limpeza, validação e enriquecimento (com log), estadual e municipal |
         | `src/estatistica.py` | média, mediana, moda, quartis, IQR, amplitude, desvio padrão, outliers |
         | `src/graficos.py` | todos os gráficos, com paleta e regras de leitura fixas |
         | `src/personas.py` | diagnóstico por gestor e simulador do fundo regional |
         | `secao_idhm.py` | a seção do dashboard (abas, filtros, textos) |
         | `app.py` | aplicação Streamlit individual |
+        | `scripts/gerar_base_bruta.py` | grava o CSV estadual bruto, com os problemas típicos de extração |
+        | `scripts/preparar_base_municipal.py` | recorta a base municipal do Atlas Brasil |
+        | `scripts/preparar_serie_recente.py` | extrai a série 2012–2024 do Radar IDHM |
+        | `scripts/coletar_investimento_publico.py` | consome a API do Siconfi / Tesouro Nacional |
+        | `scripts/gerar_imagens.py` | desenha as figuras explicativas de `assets/` |
 
-        ### Fonte dos dados
+        ### Fontes dos dados
 
-        Atlas do Desenvolvimento Humano no Brasil (PNUD / Ipea / Fundação João Pinheiro),
-        série dos Censos Demográficos do IBGE de **1991, 2000 e 2010** — a série oficial
-        comparável do IDHM por unidade da federação.
+        | Base | Fonte |
+        |---|---|
+        | IDHM por UF e por município, Censos de 1991, 2000 e 2010 | Atlas do Desenvolvimento Humano no Brasil — PNUD / Ipea / Fundação João Pinheiro |
+        | IDHM por UF, série anual de 2012 a 2024 | Radar IDHM — PNUD, Fundação João Pinheiro e IBGE |
+        | Despesa pública estadual por função | Siconfi — Secretaria do Tesouro Nacional (DCA, Anexo I-E) |
+        | Variáveis de origem do índice | IBGE — Censo Demográfico |
+
+        As duas séries de IDHM **não são comparáveis linha a linha**: a de 1991–2010 é
+        censitária e a de 2012–2024 é estimada pela PNAD Contínua, com metodologia
+        revisada. O painel as mantém separadas e avisa o leitor.
         """
     )
 

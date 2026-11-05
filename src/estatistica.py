@@ -143,6 +143,13 @@ def detectar_outliers(df: pd.DataFrame, coluna: str, rotulo: str = "sigla_uf") -
     return saida.sort_values(coluna).reset_index(drop=True)
 
 
+def _br(valor, casas: int = 3) -> str:
+    """Número no padrão brasileiro, com vírgula decimal."""
+    if valor is None or valor != valor:
+        return "—"
+    return f"{valor:.{casas}f}".replace(".", ",")
+
+
 def texto_outliers(df: pd.DataFrame, coluna: str) -> str:
     """Frase pronta justificando (ou não) os outliers — para a leitura do gestor."""
     r = resumo_descritivo(df[coluna])
@@ -154,8 +161,8 @@ def texto_outliers(df: pd.DataFrame, coluna: str) -> str:
     nome = ROTULOS.get(coluna, coluna)
     base = (
         f"Limites de Tukey para o {nome}: "
-        f"Q1 = {r['q1']:.3f}, Q3 = {r['q3']:.3f}, IQR = {r['iqr']:.3f}, "
-        f"logo o intervalo aceitável é [{r['limite_inferior']:.3f} ; {r['limite_superior']:.3f}]."
+        f"Q1 = {_br(r['q1'])}, Q3 = {_br(r['q3'])}, IQR = {_br(r['iqr'])}, "
+        f"logo o intervalo aceitável é [{_br(r['limite_inferior'])} ; {_br(r['limite_superior'])}]."
     )
     if fora.empty:
         return (
@@ -166,7 +173,7 @@ def texto_outliers(df: pd.DataFrame, coluna: str) -> str:
         )
 
     itens = ", ".join(
-        f"{linha['uf']} ({linha[coluna]:.3f}, {linha['situacao'].split()[-1]})"
+        f"{linha['uf']} ({_br(linha[coluna])}, {linha['situacao'].split()[-1]})"
         for _, linha in fora.iterrows()
     )
     return (

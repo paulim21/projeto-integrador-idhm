@@ -50,8 +50,29 @@ class LogETL:
 # 1. EXTRAÇÃO
 # ---------------------------------------------------------------------------
 
+def _parece_excel(origem) -> bool:
+    """Arquivos .xlsx são ZIP: começam com os bytes 'PK'."""
+    if isinstance(origem, (str, Path)):
+        return Path(origem).suffix.lower() in (".xlsx", ".xlsm", ".xls")
+    if isinstance(origem, io.BytesIO):
+        posicao = origem.tell()
+        assinatura = origem.read(2)
+        origem.seek(posicao)
+        return assinatura == b"PK"
+    return False
+
+
 def extrair(origem: str | Path | io.BytesIO | io.StringIO) -> pd.DataFrame:
-    """Lê o CSV bruto (;  separador decimal vírgula, acentuação UTF-8)."""
+    """
+    Lê a base bruta.
+
+    Aceita CSV (`;` como separador de coluna, `,` como decimal, UTF-8) e também
+    planilhas XLSX/XLS — o enunciado do projeto pede upload de bases do IBGE em
+    CSV ou XLSX, e o SIDRA exporta nos dois formatos. Tudo entra como texto: a
+    conversão de tipos é uma etapa explícita do ETL, logo adiante.
+    """
+    if _parece_excel(origem):
+        return pd.read_excel(origem, sheet_name=0, dtype=str).fillna("")
     return pd.read_csv(
         origem,
         sep=";",
@@ -224,3 +245,142 @@ if __name__ == "__main__":
     print(relatorio.como_dataframe().to_string(index=False))
     print(f"\nBase tratada: {destino}  |  {dados.shape[0]} linhas x {dados.shape[1]} colunas")
     print(dados.head(8).to_string(index=False))
+
+
+# ===========================================================================
+# BASE MUNICIPAL — 5.565 municípios x 3 Censos (1991, 2000, 2010)
+# ===========================================================================
+
+CAMINHO_MUNICIPAL = RAIZ / "dados" / "raw" / "idhm_municipios_bruto.csv"
+CAMINHO_SERIE_RECENTE = RAIZ / "dados" / "raw" / "idhm_uf_serie_recente.csv"
+CAMINHO_INVESTIMENTO = RAIZ / "dados" / "raw" / "investimento_publico_uf.csv"
+
+# código IBGE de 2 dígitos -> sigla da UF
+CODIGO_PARA_SIGLA = {
+    11: "RO", 12: "AC", 13: "AM", 14: "RR", 15: "PA", 16: "AP", 17: "TO",
+    21: "MA", 22: "PI", 23: "CE", 24: "RN", 25: "PB", 26: "PE", 27: "AL",
+    28: "SE", 29: "BA", 31: "MG", 32: "ES", 33: "RJ", 35: "SP",
+    41: "PR", 42: "SC", 43: "RS", 50: "MS", 51: "MT", 52: "GO", 53: "DF",
+}
+
+
+def executar_etl_municipal(origem: str | Path | io.BytesIO | None = None):
+    """
+    ETL da base municipal do Atlas Brasil.
+
+    Mesmo pipeline da base estadual, adaptado à escala: conversão de tipos,
+    padronização de nomes, tradução do código IBGE da UF para sigla e região,
+    validação do índice pela média geométrica e enriquecimento.
+    """
+    origem = origem if origem is not None else CAMINHO_MUNICIPAL
+    log = LogETL()
+
+    df = pd.read_csv(origem, sep=";", dtype=str, encoding="utf-8", keep_default_na=False)
+    df.columns = [c.strip() for c in df.columns]
+    log.registrar("1. Extração", f"Leitura da base municipal do Atlas Brasil ({df.shape[1]} colunas).", len(df))
+
+    df = df.rename(columns={
+        "ANO": "ano", "UF": "codigo_uf", "Codmun7": "codigo_municipio",
+        "Município": "municipio", "IDHM": "idhm", "IDHM_E": "idhm_educacao",
+        "IDHM_L": "idhm_longevidade", "IDHM_R": "idhm_renda",
+        "ESPVIDA": "expectativa_vida", "RDPC": "renda_per_capita", "POPT": "populacao",
+    })
+
+    numericas = ["idhm", "idhm_educacao", "idhm_longevidade", "idhm_renda",
+                 "expectativa_vida", "renda_per_capita"]
+    for coluna in numericas:
+        df[coluna] = _para_numero(df[coluna])
+    df["ano"] = pd.to_numeric(df["ano"], errors="coerce").astype("Int64")
+    df["codigo_uf"] = pd.to_numeric(df["codigo_uf"], errors="coerce").astype("Int64")
+    df["codigo_municipio"] = pd.to_numeric(df["codigo_municipio"], errors="coerce").astype("Int64")
+    df["populacao"] = pd.to_numeric(df["populacao"], errors="coerce").astype("Int64")
+    log.registrar(
+        "2. Conversão de tipos",
+        "Vírgula decimal convertida para ponto; códigos IBGE e população como inteiros.",
+        len(df),
+    )
+
+    # nomes em CAIXA ALTA no arquivo original
+    df["municipio"] = df["municipio"].str.strip().str.title()
+    df["sigla_uf"] = df["codigo_uf"].map(CODIGO_PARA_SIGLA)
+    df["uf"] = df["sigla_uf"].map(UF_NOME)
+    df["regiao"] = df["sigla_uf"].map(UF_REGIAO)
+    log.registrar(
+        "3. Padronização e geografia",
+        "Nomes de município de CAIXA ALTA para Capitalizado; código IBGE da UF traduzido "
+        "para sigla, nome e região.",
+        len(df),
+    )
+
+    antes = len(df)
+    df = df.dropna(subset=["idhm", "sigla_uf"]).drop_duplicates(subset=["ano", "codigo_municipio"])
+    log.registrar(
+        "4. Integridade",
+        f"Removidas {antes - len(df)} linha(s) sem índice ou com chave ano+município repetida.",
+        len(df),
+    )
+
+    df["idhm_calculado"] = (
+        df["idhm_educacao"] * df["idhm_longevidade"] * df["idhm_renda"]
+    ) ** (1 / 3)
+    divergentes = int(((df["idhm"] - df["idhm_calculado"]).abs() > 0.002).sum())
+    log.registrar(
+        "5. Validação",
+        f"IDHM publicado conferido contra a média geométrica das 3 dimensões: "
+        f"{divergentes} divergência(s) acima de 0,002 em {len(df)} registros.",
+        len(df),
+    )
+
+    df["faixa_idhm"] = df["idhm"].apply(classificar_faixa)
+    rotulo = {"idhm_educacao": "Educação", "idhm_renda": "Renda", "idhm_longevidade": "Longevidade"}
+    df["dimensao_mais_fraca"] = df[COLUNAS_DIMENSAO].idxmin(axis=1).map(rotulo)
+    df["desequilibrio_interno"] = (
+        df[COLUNAS_DIMENSAO].max(axis=1) - df[COLUNAS_DIMENSAO].min(axis=1)
+    ).round(3)
+    log.registrar(
+        "6. Enriquecimento",
+        "Criadas faixa do PNUD, dimensão mais fraca e desequilíbrio interno de cada município.",
+        len(df),
+    )
+
+    colunas = [
+        "ano", "codigo_municipio", "municipio", "sigla_uf", "uf", "regiao",
+        "idhm", "faixa_idhm", "idhm_educacao", "idhm_renda", "idhm_longevidade",
+        "dimensao_mais_fraca", "desequilibrio_interno",
+        "expectativa_vida", "renda_per_capita", "populacao",
+    ]
+    df = df[colunas].sort_values(["ano", "idhm"], ascending=[True, False]).reset_index(drop=True)
+    return df, log
+
+
+# ===========================================================================
+# SÉRIE RECENTE (2012–2024) e INVESTIMENTO PÚBLICO
+# ===========================================================================
+
+def carregar_serie_recente(origem: str | Path | None = None) -> pd.DataFrame:
+    """
+    Série anual do IDHM por UF, 2012–2024 (PNUD/FJP/IBGE, Radar IDHM).
+
+    ATENÇÃO: metodologia diferente da série censitária de 1991/2000/2010.
+    Nunca deve ser concatenada com ela no mesmo gráfico.
+    """
+    origem = origem if origem is not None else CAMINHO_SERIE_RECENTE
+    df = pd.read_csv(origem, sep=";", decimal=",", encoding="utf-8")
+    df["uf"] = df["sigla_uf"].map(UF_NOME)
+    df["regiao"] = df["sigla_uf"].map(UF_REGIAO)
+    df["faixa_idhm"] = df["idhm"].apply(classificar_faixa)
+    rotulo = {"idhm_educacao": "Educação", "idhm_renda": "Renda", "idhm_longevidade": "Longevidade"}
+    df["dimensao_mais_fraca"] = df[COLUNAS_DIMENSAO].idxmin(axis=1).map(rotulo)
+    df["dimensao_mais_forte"] = df[COLUNAS_DIMENSAO].idxmax(axis=1).map(rotulo)
+    df["desequilibrio_interno"] = (
+        df[COLUNAS_DIMENSAO].max(axis=1) - df[COLUNAS_DIMENSAO].min(axis=1)
+    ).round(3)
+    return df
+
+
+def carregar_investimento(origem: str | Path | None = None) -> pd.DataFrame:
+    """Despesa pública estadual por habitante (Siconfi / Tesouro Nacional)."""
+    origem = origem if origem is not None else CAMINHO_INVESTIMENTO
+    df = pd.read_csv(origem, sep=";", decimal=",", encoding="utf-8")
+    df["regiao"] = df["sigla_uf"].map(UF_REGIAO)
+    return df

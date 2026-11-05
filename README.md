@@ -33,6 +33,9 @@ python scripts/gerar_base_bruta.py
 python scripts/gerar_imagens.py
 ```
 
+As bases maiores (municipal, série 2012–2024 e dados fiscais) já vêm versionadas em
+`dados/raw/`. Para reconstruí-las, veja **Scripts de dados** mais abaixo.
+
 ```bash
 streamlit run app.py
 ```
@@ -78,10 +81,28 @@ região, dispersão Educação × Renda e matriz de correlação.
 cada UF além do limite em número de IQRs e a justificativa de manutenção ou exclusão.
 
 ### 4. As três dimensões
-Perfil comparado das três dimensões por estado, evolução 1991 → 2000 → 2010, tabela de
-ganho absoluto e relativo, e gráfico de lacuna até uma referência ajustável.
+**Radar (aranha)** dos três subíndices, com a média das 27 UFs como linha de referência:
+mostra o *formato* do desenvolvimento humano de cada estado, e um vértice puxado para o
+centro denuncia a dimensão que trava o índice. Ao lado, as mesmas grandezas em barras,
+para leitura do valor exato.
 
-### 5. Consultoria & Fundo Regional
+Evolução censitária 1991 → 2000 → 2010 e, em bloco separado, a **série anual de 2012 a
+2024** do *Radar IDHM* (PNUD/FJP/IBGE), com o aviso metodológico de que as duas séries não
+se somam. Fecha com o gráfico de lacuna até uma referência ajustável.
+
+### 5. Municípios
+A base municipal completa do Atlas Brasil — **5.565 municípios × 3 Censos = 16.695
+registros** — para medir a desigualdade *dentro* de cada estado:
+
+- os municípios de maior e menor índice do país;
+- um boxplot por UF construído sobre os seus municípios, onde a altura da caixa é o IQR
+  interno daquele estado;
+- tabela de dispersão por UF (média, mediana, Q1, Q3, IQR, desvio padrão, coeficiente de
+  variação e contagem de outliers), que responde diretamente à pergunta de negócio sobre
+  a dispersão entre os estados;
+- detalhe de um estado escolhido, com os limites de Tukey e os municípios que escapam deles.
+
+### 6. Consultoria & Fundo Regional
 Para cada gestor:
 
 - posição do estado no ranking e no quartil da distribuição;
@@ -92,7 +113,11 @@ Para cada gestor:
 - **simulador do fundo**: valor total, critério de elegibilidade, grau de concentração e
   teto por estado, com rateio por UF e repartição interna entre as três dimensões.
 
-### 6. Contexto & notícias
+Inclui ainda, na aba de estatística, a dispersão **IDHM × gasto público estadual por
+habitante** com reta de tendência, coeficiente de Pearson e R², cruzando o IDHM de 2024 com
+a despesa empenhada do mesmo exercício (Siconfi / Tesouro Nacional).
+
+### 7. Contexto & notícias
 Infográfico da composição do índice, régua das faixas do PNUD com os estados atendidos,
 reportagens e fontes oficiais (lidas de `dados/noticias.csv`, editável sem mexer no código)
 e um glossário dos termos estatísticos para a roda de conversa.
@@ -119,6 +144,12 @@ diferentes: a Longevidade é alta no Brasil inteiro, a Educação é baixa em qu
 A dimensão de menor valor em um estado não é necessariamente aquela em que ele está mais
 atrás do país. O painel mostra as duas leituras e o fundo usa a segunda.
 
+**Correlação não é causalidade.** O cruzamento com o gasto público usa despesa *empenhada*
+pelo governo estadual, sem os municípios nem a União. A correlação observada é praticamente
+nula, e o painel explica por quê: estados pequenos recebem transferências constitucionais
+que, divididas por poucos habitantes, inflam o gasto per capita sem efeito proporcional no
+índice. É efeito de escala populacional, não de eficiência.
+
 **Outliers mantidos.** Nenhuma UF ficou fora dos limites de Tukey no IDHM geral de 2010: a
 desigualdade entre os estados é grande, mas é uma variação contínua. Quando algum valor
 extremo aparece em outro filtro, ele é mantido — retirá-lo apagaria exatamente a
@@ -141,12 +172,18 @@ desigualdade que o estudo quer medir.
 │   ├── graficos.py             # todos os gráficos, com paleta e regras fixas
 │   └── personas.py             # diagnóstico por gestor e simulador do fundo
 ├── scripts/
-│   ├── gerar_base_bruta.py     # gera dados/raw/idhm_uf_bruto.csv
-│   └── gerar_imagens.py        # gera as imagens de assets/
+│   ├── gerar_base_bruta.py             # gera a base estadual bruta
+│   ├── preparar_base_municipal.py      # recorta a base municipal do Atlas Brasil
+│   ├── preparar_serie_recente.py       # extrai a série 2012–2024 do Radar IDHM
+│   ├── coletar_investimento_publico.py # consome a API do Siconfi/Tesouro
+│   └── gerar_imagens.py                # gera as imagens de assets/
 ├── dados/
-│   ├── raw/idhm_uf_bruto.csv   # base como ela chega (gerada)
-│   ├── processed/              # base tratada (gerada pelo ETL)
-│   └── noticias.csv            # reportagens e fontes da aba de contexto
+│   ├── raw/idhm_uf_bruto.csv           # base estadual como ela chega
+│   ├── raw/idhm_municipios_bruto.csv   # 5.565 municípios x 3 Censos
+│   ├── raw/idhm_uf_serie_recente.csv   # IDHM por UF, 2012–2024
+│   ├── raw/investimento_publico_uf.csv # despesa estadual por função
+│   ├── processed/                      # base tratada (gerada pelo ETL)
+│   └── noticias.csv                    # reportagens e fontes da aba de contexto
 └── assets/                     # imagens explicativas (geradas)
 ```
 
@@ -174,7 +211,7 @@ if secao == "IDH / IDHM":
 
 A barra lateral tem `st.file_uploader`. O arquivo enviado precisa ter:
 
-- `;` como separador de colunas e `,` como separador decimal;
+- CSV com `;` separando colunas e `,` como decimal, **ou** planilha `.xlsx` (primeira aba);
 - as colunas `ano`, `sigla`, `unidade_federativa`, `regiao`, `idhm`, `idhm_educacao`,
   `idhm_renda`, `idhm_longevidade`.
 
@@ -183,7 +220,26 @@ Sem envio, o painel usa `dados/raw/idhm_uf_bruto.csv`.
 
 ---
 
-## Fonte dos dados
+## Scripts de dados
 
-**Atlas do Desenvolvimento Humano no Brasil** (PNUD / Ipea / Fundação João Pinheiro),
-série dos Censos Demográficos do IBGE de 1991, 2000 e 2010 — <http://www.atlasbrasil.org.br/>
+| Script | O que faz |
+|---|---|
+| `gerar_base_bruta.py` | grava a base estadual bruta, com os problemas típicos de extração |
+| `preparar_base_municipal.py` | recorta as colunas usadas do arquivo de dados brutos do Atlas Brasil (5.565 municípios) |
+| `preparar_serie_recente.py` | extrai as tabelas 5 a 8 do PDF do *Radar IDHM* (IDHM por UF, 2012–2024) |
+| `coletar_investimento_publico.py` | consulta a API do Siconfi e grava a despesa estadual por função |
+| `gerar_imagens.py` | desenha as figuras explicativas de `assets/` |
+
+Cada script traz no cabeçalho o endereço de onde baixar o arquivo de origem. Os CSVs
+resultantes já estão versionados, então os scripts só são necessários para atualizar.
+
+---
+
+## Fontes dos dados
+
+| Base | Fonte |
+|---|---|
+| IDHM por UF e por município, Censos de 1991, 2000 e 2010 | **Atlas do Desenvolvimento Humano no Brasil** — PNUD / Ipea / Fundação João Pinheiro — <https://www.atlasbrasil.org.br/> |
+| IDHM por UF, série anual 2012–2024 | **Radar IDHM: evolução do IDHM e de seus componentes no período de 2012 a 2024** — PNUD, Fundação João Pinheiro e IBGE |
+| Despesa pública estadual por função | **Siconfi — Secretaria do Tesouro Nacional**, API de dados abertos (DCA, Anexo I-E) — <https://apidatalake.tesouro.gov.br/ords/siconfi/> |
+| Variáveis de origem do IDHM | **IBGE** — Censo Demográfico — <https://www.ibge.gov.br/> |

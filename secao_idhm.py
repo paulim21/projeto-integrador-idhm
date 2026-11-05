@@ -31,7 +31,14 @@ from src.estatistica import (
     tabela_resumo,
     texto_outliers,
 )
-from src.etl import CAMINHO_BRUTO, executar_etl, extrair
+from src.etl import (
+    CAMINHO_BRUTO,
+    carregar_investimento,
+    carregar_serie_recente,
+    executar_etl,
+    executar_etl_municipal,
+    extrair,
+)
 from src.personas import (
     DIMENSOES,
     NOME_DIMENSAO,
@@ -69,6 +76,25 @@ def _carregar(conteudo: bytes | None = None):
 @st.cache_data
 def _ler_bruto(conteudo: bytes | None = None) -> pd.DataFrame:
     return extrair(io.BytesIO(conteudo) if conteudo else CAMINHO_BRUTO)
+
+
+@st.cache_data(show_spinner="Tratando a base municipal (5.565 municípios x 3 Censos)...")
+def _carregar_municipal():
+    """ETL da base municipal do Atlas Brasil."""
+    dados, log = executar_etl_municipal()
+    return dados, log.como_dataframe()
+
+
+@st.cache_data
+def _carregar_serie_recente() -> pd.DataFrame:
+    """Série anual do IDHM por UF, 2012–2024 (Radar IDHM, PNUD/FJP/IBGE)."""
+    return carregar_serie_recente()
+
+
+@st.cache_data
+def _carregar_investimento() -> pd.DataFrame:
+    """Despesa pública estadual por habitante (Siconfi / Tesouro Nacional)."""
+    return carregar_investimento()
 
 
 @st.cache_data
@@ -455,6 +481,120 @@ def _aba_estatistica(df_filtrado: pd.DataFrame, f: dict) -> None:
         use_container_width=True,
     )
 
+    _bloco_investimento(f)
+
+
+def _bloco_investimento(f: dict) -> None:
+    """Dispersão IDHM x gasto público estadual por habitante."""
+    st.markdown("### Quem gasta mais por habitante tem IDHM maior?")
+    st.markdown(
+        "O IBGE e o Atlas Brasil medem **resultado social**, não esforço orçamentário. "
+        "Para responder a esta pergunta é preciso cruzar com a base fiscal: a despesa "
+        "estadual empenhada vem do **Siconfi, da Secretaria do Tesouro Nacional**, e está "
+        "pareada com o IDHM do mesmo ano."
+    )
+
+    try:
+        recente = _carregar_serie_recente()
+        investimento = _carregar_investimento()
+    except Exception as erro:
+        st.warning(f"Base fiscal indisponível: `{erro}`")
+        return
+
+    ano_fiscal = int(investimento["ano"].iloc[0])
+    if ano_fiscal not in set(recente["ano"]):
+        st.warning(f"Não há IDHM publicado para o exercício fiscal de {ano_fiscal}.")
+        return
+
+    base = (
+        recente[recente["ano"] == ano_fiscal]
+        .merge(
+            investimento.drop(columns=["uf", "regiao", "ano"]),
+            on="sigla_uf", how="inner",
+        )
+    )
+
+    opcoes = {
+        "investimento_social_per_capita": "Investimento social (Saúde + Educação + Assistência)",
+        "despesa_total_per_capita": "Despesa total do estado",
+        "despesa_educacao_per_capita": "Despesa com Educação",
+        "despesa_saude_per_capita": "Despesa com Saúde",
+    }
+    col_a, col_b = st.columns([2, 1])
+    with col_a:
+        gasto = st.selectbox(
+            "Tipo de gasto público (por habitante)", list(opcoes),
+            format_func=lambda c: opcoes[c], key="gasto_sel",
+        )
+    with col_b:
+        eixo_y = st.selectbox(
+            "Índice no eixo vertical", list(ROTULOS),
+            format_func=lambda c: ROTULOS[c], key="gasto_idx",
+        )
+
+    figura, estat = gx.grafico_dispersao_investimento(base, gasto, eixo_y, f["destaques"])
+    st.plotly_chart(figura, use_container_width=True)
+
+    if "correlacao" not in estat:
+        return
+
+    r = estat["correlacao"]
+    forca = (
+        "praticamente nula" if abs(r) < 0.2 else
+        "fraca" if abs(r) < 0.4 else
+        "moderada" if abs(r) < 0.7 else "forte"
+    )
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Correlação de Pearson (r)", n(r, 3))
+    c2.metric("R² (variação explicada)", f"{n(estat['r2'] * 100, 1)}%")
+    c3.metric("UFs no cruzamento", estat["n"])
+
+    maior = base.loc[base[gasto].idxmax()]
+    menor = base.loc[base[gasto].idxmin()]
+    st.markdown(
+        f"""<div class="bloco-alerta">
+        <b>Resposta à pergunta de negócio.</b> A correlação entre {opcoes[gasto].lower()} por
+        habitante e o {ROTULOS[eixo_y]} em {ano_fiscal} é <b>{n(r, 3)}</b> — uma relação
+        <b>{forca}</b>. O gasto por habitante explica apenas {n(estat['r2'] * 100, 1)}% da
+        variação do índice entre os estados. O motivo aparece nos extremos:
+        <b>{maior['uf']}</b> é quem mais gasta por habitante
+        (R$ {n(maior[gasto], 0)}) e tem IDHM de {n(maior[eixo_y])}, enquanto
+        <b>{menor['uf']}</b> é quem menos gasta (R$ {n(menor[gasto], 0)})
+        com IDHM de {n(menor[eixo_y])}. Estados pequenos recebem transferências
+        constitucionais que, divididas por poucos habitantes, produzem gasto per capita alto
+        sem que isso se traduza em índice — é um <b>efeito de escala populacional</b>, não de
+        eficiência.
+        </div>""",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        f"Despesa EMPENHADA pelo governo estadual no exercício de {ano_fiscal} (Siconfi/STN, "
+        "DCA Anexo I-E). Não inclui gasto dos municípios nem da União dentro do estado. "
+        "Correlação não é causalidade: o IDHM responde a décadas de política pública, "
+        "não ao orçamento de um ano."
+    )
+
+    with st.expander("Ver a tabela do cruzamento"):
+        tabela = base[[
+            "sigla_uf", "uf", "regiao", "idhm", "populacao",
+            "despesa_total_per_capita", "investimento_social_per_capita",
+            "despesa_educacao_per_capita", "despesa_saude_per_capita",
+        ]].sort_values("idhm", ascending=False)
+        st.dataframe(
+            br_tabela(tabela, casas_por_coluna={
+                "despesa_total_per_capita": 0, "investimento_social_per_capita": 0,
+                "despesa_educacao_per_capita": 0, "despesa_saude_per_capita": 0,
+            }).rename(columns={
+                "sigla_uf": "UF", "uf": "Estado", "regiao": "Região", "idhm": "IDHM",
+                "populacao": "População",
+                "despesa_total_per_capita": "Despesa total/hab (R$)",
+                "investimento_social_per_capita": "Investimento social/hab (R$)",
+                "despesa_educacao_per_capita": "Educação/hab (R$)",
+                "despesa_saude_per_capita": "Saúde/hab (R$)",
+            }),
+            use_container_width=True, hide_index=True,
+        )
+
 
 def _aba_dimensoes(dados: pd.DataFrame, df_ano: pd.DataFrame, f: dict) -> None:
     st.subheader("As três dimensões: onde cada estado perde pontos")
@@ -475,7 +615,19 @@ def _aba_dimensoes(dados: pd.DataFrame, df_ano: pd.DataFrame, f: dict) -> None:
         st.info("Escolha pelo menos um estado para comparar.")
         return
 
-    st.markdown("**Perfil das três dimensões, estado por estado**")
+    st.markdown("**Radar dos subíndices do IDHM**")
+    st.caption(
+        "Cada vértice é uma dimensão. Um triângulo equilibrado significa as três no mesmo "
+        "patamar; um vértice puxado para o centro mostra, de relance, qual dimensão está "
+        "travando o índice do estado. A linha pontilhada é a média das 27 UFs."
+    )
+    st.plotly_chart(gx.grafico_radar(df_ano, ufs_foco), use_container_width=True)
+
+    st.markdown("**Os mesmos números em escala comum**")
+    st.caption(
+        "O radar mostra o formato; as barras permitem ler o valor exato e comparar a mesma "
+        "dimensão entre estados."
+    )
     st.plotly_chart(gx.grafico_perfil_dimensoes(df_ano, ufs_foco), use_container_width=True)
 
     st.markdown("**Quem é o gargalo de cada estado**")
@@ -536,6 +688,76 @@ def _aba_dimensoes(dados: pd.DataFrame, df_ano: pd.DataFrame, f: dict) -> None:
                 sinal=("Ganho 1991→2010", "Crescimento %"),
             ),
             use_container_width=True, hide_index=True,
+        )
+
+    st.markdown("### E depois de 2010? A série anual de 2012 a 2024")
+    st.markdown(
+        """<div class="bloco-alerta">
+        <b>Duas séries, duas metodologias — não se somam.</b> A série dos Censos (1991, 2000 e
+        2010) é calculada sobre o Censo Demográfico. A série anual de 2012 a 2024, publicada
+        no <i>Radar IDHM</i> pelo PNUD, pela Fundação João Pinheiro e pelo IBGE, é estimada a
+        partir da PNAD Contínua e de registros administrativos, com metodologia revisada.
+        Juntar as duas em um único gráfico produziria um salto artificial, por isso elas são
+        mostradas separadamente.
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+    try:
+        recente = _carregar_serie_recente()
+    except Exception as erro:
+        st.warning(f"Série recente indisponível: `{erro}`")
+        recente = pd.DataFrame()
+
+    if not recente.empty:
+        indicador_rec = st.selectbox(
+            "Indicador na série recente",
+            list(ROTULOS), format_func=lambda c: ROTULOS[c], key="rec_ind",
+        )
+        st.plotly_chart(
+            gx.grafico_evolucao(recente, ufs_foco, indicador_rec, rotulo_x="Ano"),
+            use_container_width=True,
+        )
+
+        ultimo = int(recente["ano"].max())
+        primeiro = int(recente["ano"].min())
+        inicio = recente[recente["ano"] == primeiro].set_index("sigla_uf")
+        fim = recente[recente["ano"] == ultimo].set_index("sigla_uf")
+        pandemia = recente[recente["ano"] == 2021].set_index("sigla_uf")
+
+        comparativo = pd.DataFrame({
+            "Estado": fim.loc[ufs_foco, "uf"],
+            f"{primeiro}": inicio.loc[ufs_foco, indicador_rec],
+            "2019": recente[recente["ano"] == 2019].set_index("sigla_uf").loc[ufs_foco, indicador_rec],
+            "2021 (pandemia)": pandemia.loc[ufs_foco, indicador_rec],
+            f"{ultimo}": fim.loc[ufs_foco, indicador_rec],
+            f"Ganho {primeiro}→{ultimo}": (
+                fim.loc[ufs_foco, indicador_rec] - inicio.loc[ufs_foco, indicador_rec]
+            ),
+        }).reset_index(drop=True)
+        st.dataframe(
+            br_tabela(comparativo, sinal=(f"Ganho {primeiro}→{ultimo}",)),
+            use_container_width=True, hide_index=True,
+        )
+
+        queda = int((fim[indicador_rec] < pandemia[indicador_rec]).sum())
+        recuperacao = (
+            "Nenhuma UF continua abaixo do próprio patamar de 2021 neste indicador: "
+            "a recuperação alcançou o país inteiro."
+            if queda == 0 else
+            f"{queda} UF(s) ainda está(ão) abaixo do próprio patamar de 2021 neste indicador."
+        )
+        caiu_2021 = int((pandemia[indicador_rec] < recente[recente["ano"] == 2019]
+                         .set_index("sigla_uf")[indicador_rec]).sum())
+        st.markdown(
+            f"""<div class="bloco-destaque">
+            <b>O que a série recente mostra.</b> Em {ultimo}, todas as 27 UFs estão nas faixas
+            de desenvolvimento humano <i>alto</i> ou <i>muito alto</i> — nenhuma permanece nas
+            faixas baixas de 2010. O ano de <b>2021 interrompe a curva</b>: {caiu_2021} das 27
+            UFs registraram valor abaixo do de 2019, efeito da pandemia sobre longevidade e
+            renda. {recuperacao}
+            </div>""",
+            unsafe_allow_html=True,
         )
 
     st.markdown("### Quanto falta para alcançar a referência")
@@ -843,6 +1065,186 @@ def _aba_contexto() -> None:
         )
 
 
+def _aba_municipios(f: dict) -> None:
+    """Recorte municipal: os 5.565 municípios e a dispersão dentro de cada estado."""
+    st.subheader("O IDHM município a município")
+    st.markdown(
+        "A média estadual esconde o país real. Um estado pode ter IDHM razoável e, dentro "
+        "dele, municípios separados por meio ponto de índice. Esta aba usa a base municipal "
+        "completa do Atlas Brasil — **5.565 municípios × 3 Censos** — para medir essa "
+        "desigualdade interna."
+    )
+
+    try:
+        municipal, log_mun = _carregar_municipal()
+    except Exception as erro:
+        st.error(
+            "Base municipal não encontrada. Gere-a com "
+            "`python scripts/preparar_base_municipal.py <arquivo do Atlas>`.\n\n"
+            f"Detalhe técnico: `{erro}`"
+        )
+        return
+
+    ano = f["ano"]
+    base = municipal[municipal["ano"] == ano]
+    base = base[base["regiao"].isin(f["regioes"])]
+    if base.empty:
+        st.warning("Nenhum município no filtro atual.")
+        return
+
+    coluna = f["indicador"]
+    r = resumo_descritivo(base[coluna])
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Municípios no filtro", f"{r['n']:,}".replace(",", "."))
+    c2.metric(f"Média — {ROTULOS[coluna]}", n(r["media"]))
+    c3.metric("Mediana (Q2)", n(r["mediana"]))
+    c4.metric("Amplitude", n(r["amplitude"]),
+              help=f"De {n(r['minimo'])} a {n(r['maximo'])}.")
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Desvio padrão", n(r["desvio_padrao"]))
+    c2.metric("IQR (Q3 − Q1)", n(r["iqr"]))
+    c3.metric("Coef. de variação", f"{n(r['coef_variacao'], 1)}%")
+    marcados = detectar_outliers(base.assign(uf=base["municipio"]), coluna)
+    fora = marcados[marcados["situacao"] != "Dentro dos limites"]
+    c4.metric("Outliers (1,5 × IQR)", len(fora))
+
+    st.markdown(
+        f"""<div class="bloco-destaque">
+        <b>A escala muda tudo.</b> Entre as 27 UFs, a amplitude do {ROTULOS[coluna]} em {ano}
+        é pequena perto da municipal: aqui ela vai de {n(r['minimo'])} a {n(r['maximo'])},
+        <b>{n(r['amplitude'])} ponto</b> de diferença entre o pior e o melhor município do
+        recorte. É nessa escala que a desigualdade brasileira aparece inteira.
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### Os extremos")
+    quantos = st.slider("Quantos municípios em cada ponta", 5, 20, 10, key="mun_n")
+    st.plotly_chart(
+        gx.grafico_extremos_municipios(base, coluna, quantos),
+        use_container_width=True,
+    )
+
+    st.markdown("### Dispersão municipal dentro de cada estado")
+    st.caption(
+        "Cada caixa reúne os municípios de uma UF. A altura da caixa é o IQR daquele estado: "
+        "quanto mais alta, mais desigual é o estado por dentro. Os pontos soltos são os "
+        "municípios que escapam da regra de 1,5 × IQR do próprio estado."
+    )
+    st.plotly_chart(
+        gx.grafico_boxplot_municipal(base, coluna, f["destaques"]),
+        use_container_width=True,
+    )
+
+    st.markdown("**Medidas de dispersão por UF, calculadas sobre os municípios**")
+    linhas = []
+    for sigla, grupo in base.groupby("sigla_uf"):
+        rg = resumo_descritivo(grupo[coluna])
+        if not rg:
+            continue
+        marcado = detectar_outliers(
+            grupo.assign(uf=grupo["municipio"]), coluna
+        )
+        linhas.append({
+            "UF": sigla,
+            "Estado": grupo["uf"].iloc[0],
+            "Municípios": rg["n"],
+            "Média": rg["media"],
+            "Mediana": rg["mediana"],
+            "Mínimo": rg["minimo"],
+            "Máximo": rg["maximo"],
+            "Amplitude": rg["amplitude"],
+            "Q1": rg["q1"],
+            "Q3": rg["q3"],
+            "IQR": rg["iqr"],
+            "Desvio padrão": rg["desvio_padrao"],
+            "Coef. variação (%)": rg["coef_variacao"],
+            "Outliers": int((marcado["situacao"] != "Dentro dos limites").sum()),
+        })
+    dispersao = pd.DataFrame(linhas).sort_values("IQR", ascending=False)
+    st.dataframe(
+        br_tabela(dispersao, casas_por_coluna={"Coef. variação (%)": 1}),
+        use_container_width=True, hide_index=True,
+    )
+
+    # O DF tem um único município, então o IQR dele é zero por construção.
+    # A comparação de homogeneidade só faz sentido entre UFs com vários municípios.
+    comparaveis = dispersao[dispersao["Municípios"] >= 10]
+    mais_desigual = comparaveis.iloc[0] if not comparaveis.empty else dispersao.iloc[0]
+    mais_homogeneo = comparaveis.iloc[-1] if not comparaveis.empty else dispersao.iloc[-1]
+    st.markdown(
+        f"""<div class="bloco-destaque">
+        <b>Qual estado é mais desigual por dentro?</b> Pelo IQR municipal,
+        <b>{mais_desigual['Estado']}</b> ({n(mais_desigual['IQR'])}) é o mais heterogêneo e
+        <b>{mais_homogeneo['Estado']}</b> ({n(mais_homogeneo['IQR'])}) o mais homogêneo.
+        Para o consórcio de governadores isso importa: um estado com IQR alto precisa de
+        política <i>focalizada</i> em territórios; um estado com IQR baixo e média baixa
+        precisa de política <i>universal</i>. O mesmo IDHM estadual pode exigir desenhos
+        opostos de intervenção. (A comparação exclui UFs com menos de 10 municípios: o
+        Distrito Federal tem um só, e por isso teria IQR zero por construção.)
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### Olhar dentro de um estado")
+    uf_detalhe = st.selectbox(
+        "Estado",
+        sorted(base["sigla_uf"].unique()),
+        index=0,
+        format_func=lambda s: f"{s} — {UF_NOME[s]}",
+        key="mun_uf_detalhe",
+    )
+    recorte = base[base["sigla_uf"] == uf_detalhe].copy()
+    rd = resumo_descritivo(recorte[coluna])
+    marcado = detectar_outliers(recorte.assign(uf=recorte["municipio"]), coluna)
+    fora_uf = marcado[marcado["situacao"] != "Dentro dos limites"]
+
+    st.markdown(
+        f"No estado de **{UF_NOME[uf_detalhe]}** ({len(recorte)} municípios), o intervalo "
+        f"aceitável pela regra de Tukey vai de "
+        f"**{n(rd['limite_inferior'])}** a **{n(rd['limite_superior'])}** "
+        f"(Q1 = {n(rd['q1'])}, Q3 = {n(rd['q3'])}, IQR = {n(rd['iqr'])}). "
+        + (
+            f"**{len(fora_uf)} município(s)** ficaram fora desses limites."
+            if not fora_uf.empty else
+            "**Nenhum município** ficou fora desses limites — a distribuição interna é contínua."
+        )
+    )
+    if not fora_uf.empty:
+        st.dataframe(
+            br_tabela(
+                fora_uf.rename(columns={"uf": "Município"})[
+                    ["Município", coluna, "situacao", "distancia_em_iqr"]
+                ],
+                casas_por_coluna={"distancia_em_iqr": 2},
+            ).rename(columns={
+                coluna: ROTULOS[coluna], "situacao": "Situação",
+                "distancia_em_iqr": "Distância além do limite (em IQRs)",
+            }),
+            use_container_width=True, hide_index=True,
+        )
+
+    st.plotly_chart(
+        gx.grafico_histograma(recorte, coluna, 12, rotulo_y="Nº de municípios"),
+        use_container_width=True,
+    )
+
+    with st.expander("Log do tratamento da base municipal"):
+        st.dataframe(log_mun, use_container_width=True, hide_index=True)
+    with st.expander("Ver a base municipal tratada"):
+        st.dataframe(base.head(500), use_container_width=True, hide_index=True)
+        st.caption("Mostrando as primeiras 500 linhas do filtro atual.")
+
+    st.download_button(
+        "Baixar a base municipal tratada do ano filtrado (CSV)",
+        data=base.to_csv(index=False).encode("utf-8"),
+        file_name=f"idhm_municipios_{ano}.csv",
+        mime="text/csv",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Ponto de entrada da seção
 # ---------------------------------------------------------------------------
@@ -860,10 +1262,11 @@ def renderizar_secao(usar_sidebar: bool = True, mostrar_cabecalho: bool = True) 
     if usar_sidebar:
         st.sidebar.markdown("### Base de dados")
         arquivo = st.sidebar.file_uploader(
-            "Enviar outra base de IDHM (.csv)",
-            type=["csv"],
-            help="Formato esperado: ';' como separador de colunas e ',' como decimal, "
-                 "com as colunas ano, sigla, unidade_federativa, idhm e as três dimensões. "
+            "Enviar outra base de IDHM (.csv ou .xlsx)",
+            type=["csv", "xlsx", "xls"],
+            help="CSV com ';' separando colunas e ',' como decimal, ou planilha XLSX na "
+                 "primeira aba. Colunas esperadas: ano, sigla, unidade_federativa, regiao, "
+                 "idhm, idhm_educacao, idhm_renda e idhm_longevidade. "
                  "Sem envio, o painel usa a base do repositório.",
             key="upload_idhm",
         )
@@ -914,6 +1317,7 @@ def renderizar_secao(usar_sidebar: bool = True, mostrar_cabecalho: bool = True) 
         "Dados & ETL",
         "Estatística descritiva",
         "As três dimensões",
+        "Municípios",
         "Consultoria & Fundo",
         "Contexto & notícias",
     ])
@@ -926,8 +1330,10 @@ def renderizar_secao(usar_sidebar: bool = True, mostrar_cabecalho: bool = True) 
     with abas[3]:
         _aba_dimensoes(dados, df_ano, f)
     with abas[4]:
-        _aba_consultoria(dados, df_ano, df_filtrado, f)
+        _aba_municipios(f)
     with abas[5]:
+        _aba_consultoria(dados, df_ano, df_filtrado, f)
+    with abas[6]:
         _aba_contexto()
 
     st.markdown(

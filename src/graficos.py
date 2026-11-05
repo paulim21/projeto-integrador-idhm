@@ -179,7 +179,8 @@ def grafico_boxplot_regioes(df: pd.DataFrame, coluna: str = "idhm") -> go.Figure
 # 4. Histograma — forma da distribuição
 # ---------------------------------------------------------------------------
 
-def grafico_histograma(df: pd.DataFrame, coluna: str = "idhm", bins: int = 8) -> go.Figure:
+def grafico_histograma(df: pd.DataFrame, coluna: str = "idhm", bins: int = 8,
+                       rotulo_y: str = "Nº de UFs") -> go.Figure:
     valores = df[coluna].dropna()
     fig = go.Figure(
         go.Histogram(
@@ -201,7 +202,7 @@ def grafico_histograma(df: pd.DataFrame, coluna: str = "idhm", bins: int = 8) ->
             annotation_font=dict(size=11, color=TINTA_SECUNDARIA),
         )
     fig.update_xaxes(title=ROTULO_DIMENSAO.get(coluna, coluna))
-    fig.update_yaxes(title="Nº de UFs")
+    fig.update_yaxes(title=rotulo_y)
     return _base_layout(fig, altura=400)
 
 
@@ -210,7 +211,8 @@ def grafico_histograma(df: pd.DataFrame, coluna: str = "idhm", bins: int = 8) ->
 # ---------------------------------------------------------------------------
 
 def grafico_evolucao(
-    df_completo: pd.DataFrame, siglas: list[str], coluna: str = "idhm", media_brasil: bool = True
+    df_completo: pd.DataFrame, siglas: list[str], coluna: str = "idhm",
+    media_brasil: bool = True, rotulo_x: str = "Censo"
 ) -> go.Figure:
     fig = go.Figure()
 
@@ -243,7 +245,7 @@ def grafico_evolucao(
                 hovertemplate=f"<b>{nome}</b> — %{{x}}: %{{y:.3f}}<extra></extra>",
             )
         )
-    fig.update_xaxes(title="Censo", tickvals=sorted(df_completo["ano"].unique()))
+    fig.update_xaxes(title=rotulo_x, tickvals=sorted(df_completo["ano"].unique()))
     fig.update_yaxes(title=ROTULO_DIMENSAO.get(coluna, coluna), range=[0, 1])
     fig.update_layout(hovermode="x unified")
     return _base_layout(fig, altura=430)
@@ -351,3 +353,217 @@ def grafico_dispersao(df: pd.DataFrame, destaques: list[str] | None = None) -> g
     fig.update_xaxes(title="IDHM Educação")
     fig.update_yaxes(title="IDHM Renda")
     return _base_layout(fig, altura=430)
+
+
+# ---------------------------------------------------------------------------
+# 9. Radar (aranha) dos três subíndices — comparação de perfil entre estados
+# ---------------------------------------------------------------------------
+
+PALETA_ESTADOS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
+
+
+def grafico_radar(df: pd.DataFrame, siglas: list[str], mostrar_media: bool = True) -> go.Figure:
+    """
+    Radar dos subíndices do IDHM (Educação, Renda, Longevidade) por estado.
+
+    O radar mostra o FORMATO do desenvolvimento humano de cada UF: um triângulo
+    equilibrado indica as três dimensões no mesmo patamar; um triângulo puxado
+    para dentro em um vértice mostra qual dimensão está travando o índice.
+    """
+    eixos = ["idhm_educacao", "idhm_renda", "idhm_longevidade"]
+    rotulos = [ROTULO_DIMENSAO[c] for c in eixos]
+    fig = go.Figure()
+
+    if mostrar_media:
+        medias = [float(df[c].mean()) for c in eixos]
+        fig.add_trace(
+            go.Scatterpolar(
+                r=medias + [medias[0]],
+                theta=rotulos + [rotulos[0]],
+                name="Média das 27 UFs",
+                mode="lines",
+                line=dict(color=TINTA_SECUNDARIA, width=2, dash="dot"),
+                hovertemplate="Média das UFs<br>%{theta}: %{r:.3f}<extra></extra>",
+            )
+        )
+
+    recorte = df[df["sigla_uf"].isin(siglas)].sort_values("idhm", ascending=False)
+    for i, (_, linha) in enumerate(recorte.iterrows()):
+        valores = [float(linha[c]) for c in eixos]
+        cor = PALETA_ESTADOS[i % len(PALETA_ESTADOS)]
+        nome = str(linha["uf"]) + " (" + f"{linha['idhm']:.3f}".replace(".", ",") + ")"
+        fig.add_trace(
+            go.Scatterpolar(
+                r=valores + [valores[0]],
+                theta=rotulos + [rotulos[0]],
+                name=nome,
+                mode="lines+markers",
+                line=dict(color=cor, width=2),
+                marker=dict(size=8, line=dict(color="#fcfcfb", width=2)),
+                hovertemplate="<b>" + str(linha["uf"]) + "</b><br>%{theta}: %{r:.3f}<extra></extra>",
+            )
+        )
+
+    minimo = max(0.0, float(recorte[eixos].min().min()) - 0.15) if not recorte.empty else 0.0
+    fig.update_layout(
+        polar=dict(
+            bgcolor="rgba(0,0,0,0)",
+            radialaxis=dict(
+                visible=True, range=[minimo, 1.0], tickformat=".2f",
+                gridcolor=MALHA, linecolor=MALHA,
+                tickfont=dict(size=10, color=TINTA_SECUNDARIA),
+            ),
+            angularaxis=dict(
+                gridcolor=MALHA, linecolor=MALHA,
+                tickfont=dict(size=13, color=TINTA_PRIMARIA),
+            ),
+            # folga para os rótulos dos três eixos não serem cortados
+            domain=dict(x=[0.12, 0.88], y=[0.02, 0.88]),
+        ),
+    )
+    fig = _base_layout(fig, altura=560)
+    fig.update_layout(margin=dict(l=40, r=40, t=70, b=40))
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# 10. Boxplot municipal por UF — dispersão DENTRO de cada estado
+# ---------------------------------------------------------------------------
+
+def grafico_boxplot_municipal(df_mun: pd.DataFrame, coluna: str = "idhm",
+                              destaques: list[str] | None = None) -> go.Figure:
+    """Um boxplot por UF, construído sobre os municípios daquele estado."""
+    destaques = destaques or []
+    ordem = df_mun.groupby("sigla_uf")[coluna].median().sort_values(ascending=False).index.tolist()
+
+    fig = go.Figure()
+    for sigla in ordem:
+        recorte = df_mun[df_mun["sigla_uf"] == sigla]
+        cor = COR_DESTAQUE if sigla in destaques else CORES_REGIAO.get(
+            recorte["regiao"].iloc[0], COR_BASE
+        )
+        fig.add_trace(
+            go.Box(
+                y=recorte[coluna],
+                name=sigla,
+                marker=dict(color=cor, outliercolor=cor, size=4),
+                line=dict(color=cor, width=1.6),
+                fillcolor="rgba(0,0,0,0)",
+                boxpoints="outliers",
+                text=recorte["municipio"],
+                hovertemplate="<b>%{text}</b><br>%{y:.3f}<extra></extra>",
+                showlegend=False,
+            )
+        )
+    fig.update_yaxes(title=ROTULO_DIMENSAO.get(coluna, coluna))
+    fig.update_xaxes(title="Unidade da Federação", tickfont=dict(size=11))
+    return _base_layout(fig, altura=480)
+
+
+# ---------------------------------------------------------------------------
+# 11. Extremos municipais — maiores e menores índices
+# ---------------------------------------------------------------------------
+
+def grafico_extremos_municipios(df_mun: pd.DataFrame, coluna: str = "idhm",
+                                n: int = 10) -> go.Figure:
+    """Barras horizontais com os n municípios de maior e de menor índice."""
+    ordenado = df_mun.sort_values(coluna)
+    piores = ordenado.head(n)
+    melhores = ordenado.tail(n)
+    dados = pd.concat([piores, melhores])
+    rotulo = dados["municipio"] + " (" + dados["sigla_uf"] + ")"
+    cores = [COR_DESTAQUE] * len(piores) + [COR_BASE] * len(melhores)
+
+    fig = go.Figure(
+        go.Bar(
+            x=dados[coluna], y=rotulo, orientation="h",
+            marker=dict(color=cores, line=dict(width=0)),
+            text=[f"{v:.3f}".replace(".", ",") for v in dados[coluna]],
+            textposition="outside",
+            textfont=dict(size=11, color=TINTA_SECUNDARIA),
+            customdata=np.stack([dados["faixa_idhm"], dados["populacao"]], axis=-1),
+            hovertemplate="<b>%{y}</b><br>" + ROTULO_DIMENSAO.get(coluna, coluna)
+            + ": %{x:.3f}<br>Faixa: %{customdata[0]}"
+            + "<br>População: %{customdata[1]:,}<extra></extra>",
+            showlegend=False,
+        )
+    )
+    mediana = float(df_mun[coluna].median())
+    fig.add_vline(
+        x=mediana, line=dict(color=TINTA_SECUNDARIA, width=1, dash="dot"),
+        annotation_text=f"mediana dos municípios {mediana:.3f}".replace(".", ","),
+        annotation_position="top", annotation_font=dict(size=11, color=TINTA_SECUNDARIA),
+    )
+    fig.update_xaxes(range=[0, 1.08], title=ROTULO_DIMENSAO.get(coluna, coluna))
+    fig.update_yaxes(title=None, tickfont=dict(size=11))
+    return _base_layout(fig, altura=620)
+
+
+# ---------------------------------------------------------------------------
+# 12. Dispersão IDHM x investimento público, com reta de tendência
+# ---------------------------------------------------------------------------
+
+def grafico_dispersao_investimento(df: pd.DataFrame, coluna_x: str,
+                                   coluna_y: str = "idhm",
+                                   destaques: list[str] | None = None):
+    """
+    Correlaciona o IDHM com o gasto público por habitante.
+
+    Devolve (figura, estatísticas), com o coeficiente de correlação de Pearson
+    e os parâmetros da reta ajustada por mínimos quadrados.
+    """
+    destaques = destaques or []
+    dados = df.dropna(subset=[coluna_x, coluna_y]).copy()
+    x = dados[coluna_x].astype(float).to_numpy()
+    y = dados[coluna_y].astype(float).to_numpy()
+
+    estat = {"n": int(len(x))}
+    fig = go.Figure()
+
+    if len(x) >= 3:
+        correlacao = float(np.corrcoef(x, y)[0, 1])
+        coef = np.polyfit(x, y, 1)
+        linha_x = np.linspace(x.min(), x.max(), 50)
+        estat.update({
+            "correlacao": correlacao,
+            "r2": correlacao ** 2,
+            "inclinacao": float(coef[0]),
+            "intercepto": float(coef[1]),
+        })
+        fig.add_trace(
+            go.Scatter(
+                x=linha_x, y=np.polyval(coef, linha_x),
+                mode="lines", name="Tendência (mínimos quadrados)",
+                line=dict(color=TINTA_SECUNDARIA, width=2, dash="dash"),
+                hoverinfo="skip",
+            )
+        )
+
+    comuns = dados[~dados["sigla_uf"].isin(destaques)]
+    fig.add_trace(
+        go.Scatter(
+            x=comuns[coluna_x], y=comuns[coluna_y], mode="markers",
+            marker=dict(color=COR_NEUTRA, size=12, line=dict(color="#fcfcfb", width=2)),
+            text=comuns["uf"], name="Demais UFs",
+            hovertemplate="<b>%{text}</b><br>Gasto por habitante: R$ %{x:,.0f}"
+                          "<br>IDHM: %{y:.3f}<extra></extra>",
+        )
+    )
+    marcados = dados[dados["sigla_uf"].isin(destaques)]
+    if not marcados.empty:
+        fig.add_trace(
+            go.Scatter(
+                x=marcados[coluna_x], y=marcados[coluna_y],
+                mode="markers+text",
+                marker=dict(color=COR_DESTAQUE, size=14, line=dict(color="#fcfcfb", width=2)),
+                text=marcados["sigla_uf"], textposition="top center",
+                textfont=dict(size=11, color=TINTA_PRIMARIA),
+                name="Estados atendidos",
+                hovertemplate="<b>%{text}</b><br>Gasto por habitante: R$ %{x:,.0f}"
+                              "<br>IDHM: %{y:.3f}<extra></extra>",
+            )
+        )
+
+    fig.update_xaxes(title="Gasto público estadual por habitante (R$)")
+    fig.update_yaxes(title=ROTULO_DIMENSAO.get(coluna_y, coluna_y))
+    return _base_layout(fig, altura=460), estat
