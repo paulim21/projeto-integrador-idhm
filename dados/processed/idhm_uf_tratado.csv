@@ -1,0 +1,82 @@
+ano,sigla_uf,uf,regiao,idhm,faixa_idhm,idhm_educacao,idhm_renda,idhm_longevidade,dimensao_mais_fraca,dimensao_mais_forte,desequilibrio_interno,idhm_origem,divergencia
+1991,DF,Distrito Federal,Centro-Oeste,0.616,Médio,0.419,0.762,0.731,Educacao,Renda,0.343,publicado,0.0003
+1991,SP,São Paulo,Sudeste,0.578,Baixo,0.363,0.729,0.73,Educacao,Longevidade,0.367,publicado,0.0001
+1991,RJ,Rio de Janeiro,Sudeste,0.573,Baixo,0.392,0.696,0.69,Educacao,Renda,0.304,publicado,0.0001
+1991,SC,Santa Catarina,Sul,0.543,Baixo,0.329,0.648,0.753,Educacao,Longevidade,0.424,publicado,0.0005
+1991,RS,Rio Grande do Sul,Sul,0.542,Baixo,0.328,0.667,0.729,Educacao,Longevidade,0.401,publicado,0.0003
+1991,PR,Paraná,Sul,0.507,Baixo,0.298,0.644,0.679,Educacao,Longevidade,0.381,publicado,0.0
+1991,ES,Espírito Santo,Sudeste,0.505,Baixo,0.304,0.619,0.686,Educacao,Longevidade,0.382,publicado,0.0004
+1991,MS,Mato Grosso do Sul,Centro-Oeste,0.488,Muito baixo,0.259,0.641,0.699,Educacao,Longevidade,0.44,publicado,0.0002
+1991,GO,Goiás,Centro-Oeste,0.487,Muito baixo,0.273,0.633,0.668,Educacao,Longevidade,0.395,publicado,0.0001
+1991,MG,Minas Gerais,Sudeste,0.478,Muito baixo,0.257,0.618,0.689,Educacao,Longevidade,0.432,publicado,0.0003
+1991,AP,Amapá,Norte,0.472,Muito baixo,0.254,0.62,0.668,Educacao,Longevidade,0.414,recalculado,0.0001
+1991,RR,Roraima,Norte,0.459,Muito baixo,0.24,0.643,0.628,Educacao,Renda,0.403,publicado,0.0003
+1991,MT,Mato Grosso,Centro-Oeste,0.449,Muito baixo,0.221,0.627,0.654,Educacao,Longevidade,0.433,publicado,0.0002
+1991,PE,Pernambuco,Nordeste,0.433,Muito baixo,0.232,0.569,0.617,Educacao,Longevidade,0.385,publicado,0.0005
+1991,AM,Amazonas,Norte,0.43,Muito baixo,0.204,0.605,0.645,Educacao,Longevidade,0.441,publicado,0.0002
+1991,RN,Rio Grande do Norte,Nordeste,0.428,Muito baixo,0.242,0.547,0.591,Educacao,Longevidade,0.349,publicado,0.0003
+1991,PA,Pará,Norte,0.413,Muito baixo,0.194,0.567,0.64,Educacao,Longevidade,0.446,publicado,0.0001
+1991,SE,Sergipe,Nordeste,0.408,Muito baixo,0.211,0.552,0.581,Educacao,Longevidade,0.37,publicado,0.0005
+1991,RO,Rondônia,Norte,0.407,Muito baixo,0.181,0.585,0.635,Educacao,Longevidade,0.454,publicado,0.0004
+1991,CE,Ceará,Nordeste,0.405,Muito baixo,0.204,0.532,0.613,Educacao,Longevidade,0.409,publicado,0.0002
+1991,AC,Acre,Norte,0.402,Muito baixo,0.176,0.574,0.645,Educacao,Longevidade,0.469,publicado,0.0004
+1991,BA,Bahia,Nordeste,0.386,Muito baixo,0.182,0.543,0.582,Educacao,Longevidade,0.4,publicado,0.0
+1991,PB,Paraíba,Nordeste,0.382,Muito baixo,0.191,0.515,0.565,Educacao,Longevidade,0.374,publicado,0.0004
+1991,AL,Alagoas,Nordeste,0.37,Muito baixo,0.174,0.527,0.552,Educacao,Longevidade,0.378,publicado,0.0001
+1991,TO,Tocantins,Norte,0.369,Muito baixo,0.155,0.549,0.589,Educacao,Longevidade,0.434,publicado,0.0003
+1991,PI,Piauí,Nordeste,0.362,Muito baixo,0.164,0.488,0.595,Educacao,Longevidade,0.431,recalculado,0.0005
+1991,MA,Maranhão,Nordeste,0.357,Muito baixo,0.173,0.478,0.551,Educacao,Longevidade,0.378,publicado,0.0002
+2000,DF,Distrito Federal,Centro-Oeste,0.725,Alto,0.582,0.805,0.814,Educacao,Longevidade,0.232,publicado,0.0002
+2000,SP,São Paulo,Sudeste,0.702,Alto,0.581,0.756,0.786,Educacao,Longevidade,0.205,publicado,0.0005
+2000,SC,Santa Catarina,Sul,0.674,Médio,0.526,0.717,0.812,Educacao,Longevidade,0.286,publicado,0.0
+2000,RJ,Rio de Janeiro,Sudeste,0.664,Médio,0.53,0.745,0.74,Educacao,Renda,0.215,publicado,0.0004
+2000,RS,Rio Grande do Sul,Sul,0.664,Médio,0.505,0.72,0.804,Educacao,Longevidade,0.299,publicado,0.0003
+2000,PR,Paraná,Sul,0.65,Médio,0.522,0.704,0.747,Educacao,Longevidade,0.225,publicado,0.0001
+2000,ES,Espírito Santo,Sudeste,0.64,Médio,0.491,0.687,0.777,Educacao,Longevidade,0.286,publicado,0.0
+2000,MG,Minas Gerais,Sudeste,0.624,Médio,0.47,0.68,0.759,Educacao,Longevidade,0.289,publicado,0.0003
+2000,GO,Goiás,Centro-Oeste,0.615,Médio,0.439,0.686,0.773,Educacao,Longevidade,0.334,publicado,0.0002
+2000,MS,Mato Grosso do Sul,Centro-Oeste,0.613,Médio,0.445,0.687,0.752,Educacao,Longevidade,0.307,publicado,0.0004
+2000,MT,Mato Grosso,Centro-Oeste,0.601,Médio,0.426,0.689,0.74,Educacao,Longevidade,0.314,publicado,0.0001
+2000,RR,Roraima,Norte,0.598,Baixo,0.457,0.652,0.717,Educacao,Longevidade,0.26,recalculado,0.0002
+2000,AP,Amapá,Norte,0.577,Baixo,0.424,0.638,0.711,Educacao,Longevidade,0.287,publicado,0.0002
+2000,RN,Rio Grande do Norte,Nordeste,0.552,Baixo,0.396,0.608,0.7,Educacao,Longevidade,0.304,publicado,0.0004
+2000,PE,Pernambuco,Nordeste,0.544,Baixo,0.372,0.615,0.705,Educacao,Longevidade,0.333,publicado,0.0003
+2000,CE,Ceará,Nordeste,0.541,Baixo,0.377,0.588,0.713,Educacao,Longevidade,0.336,publicado,0.0003
+2000,RO,Rondônia,Norte,0.537,Baixo,0.345,0.654,0.688,Educacao,Longevidade,0.343,publicado,0.0004
+2000,TO,Tocantins,Norte,0.525,Baixo,0.348,0.605,0.688,Educacao,Longevidade,0.34,publicado,0.0002
+2000,PA,Pará,Norte,0.518,Baixo,0.319,0.601,0.725,Educacao,Longevidade,0.406,publicado,0.0
+2000,SE,Sergipe,Nordeste,0.518,Baixo,0.343,0.596,0.678,Educacao,Longevidade,0.335,publicado,0.0005
+2000,AC,Acre,Norte,0.517,Baixo,0.325,0.612,0.694,Educacao,Longevidade,0.369,publicado,0.0002
+2000,AM,Amazonas,Norte,0.515,Baixo,0.324,0.608,0.692,Educacao,Longevidade,0.368,publicado,0.0003
+2000,BA,Bahia,Nordeste,0.512,Baixo,0.332,0.594,0.68,Educacao,Longevidade,0.348,publicado,0.0001
+2000,PB,Paraíba,Nordeste,0.506,Baixo,0.331,0.582,0.672,Educacao,Longevidade,0.341,publicado,0.0001
+2000,PI,Piauí,Nordeste,0.484,Muito baixo,0.301,0.556,0.676,Educacao,Longevidade,0.375,recalculado,0.0004
+2000,MA,Maranhão,Nordeste,0.476,Muito baixo,0.312,0.531,0.649,Educacao,Longevidade,0.337,publicado,0.0005
+2000,AL,Alagoas,Nordeste,0.471,Muito baixo,0.282,0.574,0.647,Educacao,Longevidade,0.365,publicado,0.0004
+2010,DF,Distrito Federal,Centro-Oeste,0.824,Muito alto,0.742,0.863,0.873,Educacao,Longevidade,0.131,publicado,0.0002
+2010,SP,São Paulo,Sudeste,0.783,Alto,0.719,0.789,0.845,Educacao,Longevidade,0.126,publicado,0.0004
+2010,SC,Santa Catarina,Sul,0.774,Alto,0.697,0.773,0.86,Educacao,Longevidade,0.163,publicado,0.0002
+2010,RJ,Rio de Janeiro,Sudeste,0.761,Alto,0.675,0.782,0.835,Educacao,Longevidade,0.16,publicado,0.0
+2010,PR,Paraná,Sul,0.749,Alto,0.668,0.757,0.83,Educacao,Longevidade,0.162,publicado,0.0003
+2010,RS,Rio Grande do Sul,Sul,0.746,Alto,0.642,0.769,0.84,Educacao,Longevidade,0.198,publicado,0.0003
+2010,ES,Espírito Santo,Sudeste,0.74,Alto,0.653,0.743,0.835,Educacao,Longevidade,0.182,publicado,0.0001
+2010,GO,Goiás,Centro-Oeste,0.735,Alto,0.646,0.742,0.827,Educacao,Longevidade,0.181,publicado,0.0004
+2010,MG,Minas Gerais,Sudeste,0.731,Alto,0.638,0.73,0.838,Educacao,Longevidade,0.2,publicado,0.0002
+2010,MS,Mato Grosso do Sul,Centro-Oeste,0.729,Alto,0.629,0.74,0.833,Educacao,Longevidade,0.204,publicado,0.0002
+2010,MT,Mato Grosso,Centro-Oeste,0.725,Alto,0.635,0.732,0.821,Educacao,Longevidade,0.186,recalculado,0.0003
+2010,AP,Amapá,Norte,0.708,Alto,0.629,0.694,0.813,Educacao,Longevidade,0.184,publicado,0.0
+2010,RR,Roraima,Norte,0.707,Alto,0.628,0.695,0.809,Educacao,Longevidade,0.181,publicado,0.0002
+2010,TO,Tocantins,Norte,0.699,Médio,0.624,0.69,0.793,Educacao,Longevidade,0.169,publicado,0.0001
+2010,RO,Rondônia,Norte,0.69,Médio,0.577,0.712,0.8,Educacao,Longevidade,0.223,publicado,0.0001
+2010,RN,Rio Grande do Norte,Nordeste,0.684,Médio,0.597,0.678,0.792,Educacao,Longevidade,0.195,publicado,0.0004
+2010,CE,Ceará,Nordeste,0.682,Médio,0.615,0.651,0.793,Educacao,Longevidade,0.178,publicado,0.0002
+2010,AM,Amazonas,Norte,0.674,Médio,0.561,0.677,0.805,Educacao,Longevidade,0.244,publicado,0.0003
+2010,PE,Pernambuco,Nordeste,0.673,Médio,0.574,0.673,0.789,Educacao,Longevidade,0.215,publicado,0.0
+2010,SE,Sergipe,Nordeste,0.665,Médio,0.56,0.672,0.781,Educacao,Longevidade,0.221,publicado,0.0001
+2010,AC,Acre,Norte,0.663,Médio,0.559,0.671,0.777,Educacao,Longevidade,0.218,publicado,0.0
+2010,BA,Bahia,Nordeste,0.66,Médio,0.555,0.663,0.783,Educacao,Longevidade,0.228,publicado,0.0005
+2010,PB,Paraíba,Nordeste,0.658,Médio,0.555,0.656,0.783,Educacao,Longevidade,0.228,publicado,0.0001
+2010,PA,Pará,Norte,0.646,Médio,0.528,0.646,0.789,Educacao,Longevidade,0.261,recalculado,0.0004
+2010,PI,Piauí,Nordeste,0.646,Médio,0.547,0.635,0.777,Educacao,Longevidade,0.23,publicado,0.0002
+2010,MA,Maranhão,Nordeste,0.639,Médio,0.562,0.612,0.757,Educacao,Longevidade,0.195,publicado,0.0005
+2010,AL,Alagoas,Nordeste,0.631,Médio,0.52,0.641,0.755,Educacao,Longevidade,0.235,publicado,0.0003

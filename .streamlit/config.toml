@@ -1,0 +1,12 @@
+# Tema fixo do painel: as cores dos gráficos foram escolhidas e validadas
+# contra um fundo claro, por isso o tema não é deixado no automático.
+[theme]
+base = "light"
+primaryColor = "#2a78d6"
+backgroundColor = "#fcfcfb"
+secondaryBackgroundColor = "#f2f1ee"
+textColor = "#0b0b0b"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false
